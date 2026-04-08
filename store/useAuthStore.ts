@@ -1,23 +1,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { UserProfile } from "@/types";
+import { getAccessToken } from "@/lib/api";
+import { clearTokens } from "@/lib/api";
 
 interface AuthState {
   user: UserProfile | null;
   isAuthenticated: boolean;
   login: (user: UserProfile) => void;
   logout: () => void;
+  setUser: (user: UserProfile | null) => void;
   updateUser: (updates: Partial<UserProfile>) => void;
+  checkAuth: () => void;
+  clearAuth: () => void;
 }
-
-const mockUser: UserProfile = {
-  id: "1",
-  name: "Andi Pratama",
-  email: "andi.pratama@email.com",
-  avatar: "/avatar.jpg",
-  phone: "+62 812 3456 7890",
-  joinDate: "2024-01-15",
-};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -25,16 +21,25 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
+      logout: () => {
+        clearTokens();
+        set({ user: null, isAuthenticated: false });
+      },
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
       updateUser: (updates) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...updates } : null,
         })),
+      checkAuth: () => {
+        const token = getAccessToken();
+        if (!token) {
+          set({ user: null, isAuthenticated: false });
+        }
+      },
+      clearAuth: () => set({ user: null, isAuthenticated: false }),
     }),
     {
       name: "mymoney-auth",
     }
   )
 );
-
-export { mockUser };

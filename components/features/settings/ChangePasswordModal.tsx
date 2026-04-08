@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useChangePassword } from "@/lib/hooks";
 import { CheckCircle2 } from "lucide-react";
 
 interface ChangePasswordModalProps {
@@ -13,19 +14,14 @@ interface ChangePasswordModalProps {
 }
 
 export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalProps) {
+  const changePassword = useChangePassword();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
-  if (open && (success || error)) {
-    // Only reset state if we handle it outside or properly within effect. 
-    // Doing it here just for simple re-renders is tricky. Better to do it in a cleanup effect.
-  }
+  const loading = changePassword.isPending;
 
   const handleOpenChange = (v: boolean) => {
     if (!v) {
@@ -40,7 +36,7 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
     onOpenChange(v);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     
@@ -53,16 +49,19 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
       return;
     }
 
-    setLoading(true);
-    
-    // Simulate API request
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await changePassword.mutateAsync({
+        currentPassword,
+        newPassword,
+      });
+
       setSuccess(true);
       setTimeout(() => {
         handleOpenChange(false);
       }, 2000);
-    }, 1000);
+    } catch {
+      setError("Gagal mengganti password. Periksa password saat ini.");
+    }
   };
 
   return (

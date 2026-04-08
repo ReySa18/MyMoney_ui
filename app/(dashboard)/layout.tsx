@@ -1,25 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layouts/Sidebar";
 import { Topbar } from "@/components/layouts/Topbar";
-import { useAuthStore, mockUser } from "@/store/useAuthStore";
-import { useEffect, useState } from "react";
 import { useSidebarStore } from "@/store/useSidebarStore";
+import { getAccessToken } from "@/lib/api";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const login = useAuthStore((s) => s.login);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const router = useRouter();
   const { collapsed, mobileOpen } = useSidebarStore();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      login(mockUser);
+    const token = getAccessToken();
+    if (!token) {
+      router.replace("/login");
+      return;
     }
-  }, [isAuthenticated, login]);
+    setAuthChecked(true);
+  }, [router]);
+
+  if (!authChecked) return null;
 
   return (
     <div className="flex min-h-screen bg-surface">

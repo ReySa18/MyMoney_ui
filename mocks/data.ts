@@ -18,18 +18,18 @@ export const mockAccounts: Account[] = [
 ];
 
 export const mockTransactions: Transaction[] = [
-  { id: "1", description: "Gacoan Noodle", category: "Makanan & Minuman", categoryIcon: "utensils", amount: -45000, type: "expense", date: "2024-06-15", account: "GoPay" },
-  { id: "2", description: "Shell Kebon Jeruk", category: "Transportasi", categoryIcon: "car", amount: -250000, type: "expense", date: "2024-06-14", account: "Bank BCA" },
-  { id: "3", description: "Gaji Bulanan", category: "Pemasukan", categoryIcon: "banknote", amount: 12000000, type: "income", date: "2024-06-13", account: "Bank BCA" },
-  { id: "4", description: "Uniqlo Indonesia", category: "Belanja", categoryIcon: "shopping-bag", amount: -599000, type: "expense", date: "2024-06-12", account: "Bank BCA" },
-  { id: "5", description: "PLN Pasca Bayar", category: "Tagihan", categoryIcon: "home", amount: -450000, type: "expense", date: "2024-06-11", account: "Bank BCA" },
-  { id: "6", description: "Freelance Project", category: "Pemasukan", categoryIcon: "banknote", amount: 5000000, type: "income", date: "2024-06-10", account: "Bank Mandiri" },
-  { id: "7", description: "Netflix Subscription", category: "Hiburan", categoryIcon: "tv", amount: -186000, type: "expense", date: "2024-06-09", account: "GoPay" },
-  { id: "8", description: "Grab Transport", category: "Transportasi", categoryIcon: "car", amount: -35000, type: "expense", date: "2024-06-08", account: "OVO" },
-  { id: "9", description: "Starbucks", category: "Makanan & Minuman", categoryIcon: "coffee", amount: -78000, type: "expense", date: "2024-06-07", account: "GoPay" },
-  { id: "10", description: "Tokopedia", category: "Belanja", categoryIcon: "shopping-bag", amount: -350000, type: "expense", date: "2024-06-06", account: "Bank BCA" },
-  { id: "11", description: "Indihome", category: "Tagihan", categoryIcon: "wifi", amount: -399000, type: "expense", date: "2024-06-05", account: "Bank BCA" },
-  { id: "12", description: "Dividen Saham", category: "Pemasukan", categoryIcon: "trending-up", amount: 750000, type: "income", date: "2024-06-04", account: "Bank Mandiri" },
+  { id: "1", description: "Gacoan Noodle", category: "Makanan & Minuman", categoryIcon: "utensils", amount: -45000, type: "expense", date: "2024-06-15", accountId: "2", account: "GoPay" },
+  { id: "2", description: "Shell Kebon Jeruk", category: "Transportasi", categoryIcon: "car", amount: -250000, type: "expense", date: "2024-06-14", accountId: "1", account: "Bank BCA" },
+  { id: "3", description: "Gaji Bulanan", category: "Pemasukan", categoryIcon: "banknote", amount: 12000000, type: "income", date: "2024-06-13", accountId: "1", account: "Bank BCA" },
+  { id: "4", description: "Uniqlo Indonesia", category: "Belanja", categoryIcon: "shopping-bag", amount: -599000, type: "expense", date: "2024-06-12", accountId: "1", account: "Bank BCA" },
+  { id: "5", description: "PLN Pasca Bayar", category: "Tagihan", categoryIcon: "home", amount: -450000, type: "expense", date: "2024-06-11", accountId: "1", account: "Bank BCA" },
+  { id: "6", description: "Freelance Project", category: "Pemasukan", categoryIcon: "banknote", amount: 5000000, type: "income", date: "2024-06-10", accountId: "4", account: "Bank Mandiri" },
+  { id: "7", description: "Netflix Subscription", category: "Hiburan", categoryIcon: "tv", amount: -186000, type: "expense", date: "2024-06-09", accountId: "2", account: "GoPay" },
+  { id: "8", description: "Grab Transport", category: "Transportasi", categoryIcon: "car", amount: -35000, type: "expense", date: "2024-06-08", accountId: "5", account: "OVO" },
+  { id: "9", description: "Starbucks", category: "Makanan & Minuman", categoryIcon: "coffee", amount: -78000, type: "expense", date: "2024-06-07", accountId: "2", account: "GoPay" },
+  { id: "10", description: "Tokopedia", category: "Belanja", categoryIcon: "shopping-bag", amount: -350000, type: "expense", date: "2024-06-06", accountId: "1", account: "Bank BCA" },
+  { id: "11", description: "Indihome", category: "Tagihan", categoryIcon: "wifi", amount: -399000, type: "expense", date: "2024-06-05", accountId: "1", account: "Bank BCA" },
+  { id: "12", description: "Dividen Saham", category: "Pemasukan", categoryIcon: "trending-up", amount: 750000, type: "income", date: "2024-06-04", accountId: "4", account: "Bank Mandiri" },
 ];
 
 export const mockAssets: Asset[] = [

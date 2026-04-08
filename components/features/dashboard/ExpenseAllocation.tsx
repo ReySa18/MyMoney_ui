@@ -1,12 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { mockExpenseCategories } from "@/mocks/data";
+import { useDashboardStore } from "@/store/useDashboardStore";
 import { motion } from "framer-motion";
 
 export function ExpenseAllocation() {
   const { t } = useTranslation();
-  const totalUsed = 65;
+  const { expenseCategories, fetchExpenseCategories, loading } = useDashboardStore();
+
+  useEffect(() => {
+    fetchExpenseCategories();
+  }, [fetchExpenseCategories]);
+
+  const totalUsed = expenseCategories.reduce((sum, cat) => sum + cat.percentage, 0);
 
   return (
     <div className="card-tonal h-full flex flex-col">
@@ -59,30 +66,40 @@ export function ExpenseAllocation() {
 
       {/* Category breakdown */}
       <div className="flex-1 space-y-4">
-        {mockExpenseCategories.map((cat, i) => (
-          <motion.div
-            key={cat.name}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + i * 0.1 }}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-on-surface">{cat.name}</span>
-              <span className="text-sm font-semibold text-on-surface">
-                {cat.percentage}%
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: cat.color }}
-                initial={{ width: 0 }}
-                animate={{ width: `${cat.percentage}%` }}
-                transition={{ duration: 0.8, delay: 0.3 + i * 0.1, ease: "easeOut" }}
-              />
-            </div>
-          </motion.div>
-        ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-on-surface-variant">
+            Loading...
+          </div>
+        ) : expenseCategories.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-on-surface-variant">
+            {t("dashboard.noExpenses")}
+          </div>
+        ) : (
+          expenseCategories.map((cat, i) => (
+            <motion.div
+              key={cat.name}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 + i * 0.1 }}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm text-on-surface">{cat.name}</span>
+                <span className="text-sm font-semibold text-on-surface">
+                  {cat.percentage}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: cat.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${cat.percentage}%` }}
+                  transition={{ duration: 0.8, delay: 0.3 + i * 0.1, ease: "easeOut" }}
+                />
+              </div>
+            </motion.div>
+          ))
+        )}
       </div>
     </div>
   );

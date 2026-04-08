@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { mockCashFlow } from "@/mocks/data";
+import { useDashboardStore } from "@/store/useDashboardStore";
 import { formatCurrency } from "@/lib/currency";
 import {
   BarChart,
@@ -12,12 +13,16 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 export function CashFlowChart() {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
+  const { cashflow, fetchCashflow, loading } = useDashboardStore();
+
+  useEffect(() => {
+    fetchCashflow();
+  }, [fetchCashflow]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -67,49 +72,55 @@ export function CashFlowChart() {
       </div>
 
       <div className="h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={mockCashFlow}
-            barGap={4}
-            barCategoryGap="20%"
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(var(--outline-variant) / 0.15)"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="month"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: "hsl(var(--on-surface-variant))" }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 11, fill: "hsl(var(--on-surface-variant))" }}
-              tickFormatter={(v) =>
-                `${(v / 1_000_000).toFixed(0)}jt`
-              }
-              width={45}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--surface-container) / 0.5)" }} />
-            <Bar
-              dataKey="income"
-              name={t("dashboard.income")}
-              fill="hsl(var(--primary))"
-              radius={[6, 6, 0, 0]}
-              maxBarSize={32}
-            />
-            <Bar
-              dataKey="expense"
-              name={t("dashboard.expense")}
-              fill="hsl(var(--tertiary))"
-              radius={[6, 6, 0, 0]}
-              maxBarSize={32}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-on-surface-variant">
+            Loading...
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={cashflow}
+              barGap={4}
+              barCategoryGap="20%"
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--outline-variant) / 0.15)"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "hsl(var(--on-surface-variant))" }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--on-surface-variant))" }}
+                tickFormatter={(v) =>
+                  `${(v / 1_000_000).toFixed(0)}jt`
+                }
+                width={45}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--surface-container) / 0.5)" }} />
+              <Bar
+                dataKey="income"
+                name={t("dashboard.income")}
+                fill="hsl(var(--primary))"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={32}
+              />
+              <Bar
+                dataKey="expense"
+                name={t("dashboard.expense")}
+                fill="hsl(var(--tertiary))"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={32}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CrudModal, ModalField, ModalInput, ModalSelect } from "@/components/common/CrudModal";
 import type { Account } from "@/types";
+import { accountsApi } from "@/lib/api";
 
 const TYPE_OPTIONS = [
   { value: "savings", label: "🏦 Tabungan" },
@@ -34,11 +35,11 @@ interface AccountModalProps {
   open: boolean;
   onClose: () => void;
   account?: Account | null;
-  onSave: (data: Account) => void;
+  onSaved?: () => void;
   onDelete?: (id: string) => void;
 }
 
-export function AccountModal({ open, onClose, account, onSave, onDelete }: AccountModalProps) {
+export function AccountModal({ open, onClose, account, onSaved, onDelete }: AccountModalProps) {
   const isEdit = !!account;
   const [name, setName] = useState("");
   const [type, setType] = useState<Account["type"]>("savings");
@@ -65,26 +66,42 @@ export function AccountModal({ open, onClose, account, onSave, onDelete }: Accou
   const handleSave = async () => {
     if (!name || !balance) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onSave({
-      id: account?.id || Date.now().toString(),
-      name,
-      type,
-      icon: ICON_MAP[type] || "landmark",
-      balance: parseFloat(balance),
-      color,
-    });
-    setIsLoading(false);
-    onClose();
+    try {
+      const payload = {
+        name,
+        type,
+        icon: ICON_MAP[type] || "landmark",
+        balance: parseFloat(balance),
+        color,
+      };
+
+      if (account?.id) {
+        await accountsApi.update(account.id, payload);
+      } else {
+        await accountsApi.create(payload);
+      }
+
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!account) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onDelete?.(account.id);
-    setIsLoading(false);
-    onClose();
+    try {
+      if (onDelete) {
+        await onDelete(account.id);
+      } else {
+        await accountsApi.delete(account.id);
+      }
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (showDelete) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CrudModal, ModalField, ModalInput, ModalSelect } from "@/components/common/CrudModal";
 import type { Budget } from "@/types";
+import { budgetsApi } from "@/lib/api";
 
 const CATEGORY_OPTIONS = [
   { value: "Makanan & Minuman", label: "🍜 Makanan & Minuman" },
@@ -39,11 +40,11 @@ interface BudgetModalProps {
   open: boolean;
   onClose: () => void;
   budget?: Budget | null;
-  onSave: (data: Budget) => void;
+  onSaved?: () => void;
   onDelete?: (id: string) => void;
 }
 
-export function BudgetModal({ open, onClose, budget, onSave, onDelete }: BudgetModalProps) {
+export function BudgetModal({ open, onClose, budget, onSaved, onDelete }: BudgetModalProps) {
   const isEdit = !!budget;
   const [category, setCategory] = useState("Makanan & Minuman");
   const [limit, setLimit] = useState("");
@@ -67,26 +68,46 @@ export function BudgetModal({ open, onClose, budget, onSave, onDelete }: BudgetM
   const handleSave = async () => {
     if (!category || !limit) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onSave({
-      id: budget?.id || Date.now().toString(),
-      category,
-      icon: ICON_MAP[category] || "banknote",
-      limit: parseFloat(limit),
-      spent: budget?.spent || 0,
-      color,
-    });
-    setIsLoading(false);
-    onClose();
+    try {
+      const now = new Date();
+      const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const basePayload = {
+        category,
+        icon: ICON_MAP[category] || "banknote",
+        limit: parseFloat(limit),
+        color,
+      };
+
+      if (budget?.id) {
+        await budgetsApi.update(budget.id, basePayload);
+      } else {
+        await budgetsApi.create({
+          ...basePayload,
+          period,
+        });
+      }
+
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!budget) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onDelete?.(budget.id);
-    setIsLoading(false);
-    onClose();
+    try {
+      if (onDelete) {
+        await onDelete(budget.id);
+      } else {
+        await budgetsApi.delete(budget.id);
+      }
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (showDelete) {

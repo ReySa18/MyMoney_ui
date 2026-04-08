@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { BalanceCard } from "@/components/features/dashboard/BalanceCard";
 import { CashFlowChart } from "@/components/features/dashboard/CashFlowChart";
@@ -10,27 +9,19 @@ import { ExpenseAllocation } from "@/components/features/dashboard/ExpenseAlloca
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { TransactionModal } from "@/components/features/transactions/TransactionModal";
-import { mockTransactions } from "@/mocks/data";
-import type { Transaction } from "@/types";
+import { useTransactionsStore } from "@/store/useTransactionsStore";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const fetchTransactions = useTransactionsStore((s) => s.fetchTransactions);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleSave = (data: Transaction) => {
-    setTransactions((prev) => {
-      const idx = prev.findIndex((t) => t.id === data.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = data;
-        return next;
-      }
-      return [data, ...prev];
-    });
+  const handleSaved = async () => {
+    await fetchTransactions({ limit: 5 });
   };
 
   return (
@@ -77,7 +68,7 @@ export default function DashboardPage() {
         {/* Transactions + Budget allocation */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
           <StaggerItem className="xl:col-span-2">
-            <RecentTransactions transactions={transactions} />
+            <RecentTransactions />
           </StaggerItem>
           <StaggerItem>
             <ExpenseAllocation />
@@ -88,7 +79,7 @@ export default function DashboardPage() {
       <TransactionModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSave={handleSave}
+        onSaved={handleSaved}
       />
     </AnimatedPage>
   );

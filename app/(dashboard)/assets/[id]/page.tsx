@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatedPage } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { mockAssets } from "@/mocks/data";
+import { assetsApi } from "@/lib/api";
+import type { Asset } from "@/types";
 import { formatCurrency, formatPercentage } from "@/lib/currency";
-import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -23,7 +24,43 @@ export default function AssetDetailPage() {
   const params = useParams();
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const asset = mockAssets.find((a) => a.id === params.id) || mockAssets[0];
+  const [asset, setAsset] = useState<Asset | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAsset = async () => {
+      try {
+        const data = await assetsApi.getById(params.id as string);
+        setAsset(data);
+      } catch (error) {
+        console.error("Failed to fetch asset:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAsset();
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <AnimatedPage>
+        <div className="flex items-center justify-center h-64 text-on-surface-variant">
+          Loading...
+        </div>
+      </AnimatedPage>
+    );
+  }
+
+  if (!asset) {
+    return (
+      <AnimatedPage>
+        <div className="flex items-center justify-center h-64 text-on-surface-variant">
+          Asset not found
+        </div>
+      </AnimatedPage>
+    );
+  }
+
   const isPositive = asset.change >= 0;
 
   return (
@@ -71,7 +108,7 @@ export default function AssetDetailPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--outline-variant) / 0.15)" vertical={false} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--on-surface-variant))" }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--on-surface-variant))" }} tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}jt`} width={45} />
-                <Tooltip formatter={(value: any) => formatCurrency(Number(value), currency)} contentStyle={{ background: "hsl(var(--surface-container-lowest))", border: "none", borderRadius: "0.75rem", boxShadow: "0 4px 24px hsl(var(--on-surface) / 0.06)" }} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0), currency)} contentStyle={{ background: "hsl(var(--surface-container-lowest))", border: "none", borderRadius: "0.75rem", boxShadow: "0 4px 24px hsl(var(--on-surface) / 0.06)" }} />
                 <Area type="monotone" dataKey="value" stroke={asset.color} strokeWidth={2.5} fillOpacity={1} fill="url(#colorValue)" />
               </AreaChart>
             </ResponsiveContainer>

@@ -6,6 +6,7 @@ export interface Transaction {
   amount: number;
   type: "income" | "expense";
   date: string;
+  accountId: string;
   account: string;
 }
 

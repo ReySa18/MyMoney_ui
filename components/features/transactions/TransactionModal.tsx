@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { CrudModal, ModalField, ModalInput, ModalSelect } from "@/components/common/CrudModal";
 import type { Transaction } from "@/types";
+import { transactionsApi } from "@/lib/api";
+import { useAccountsStore } from "@/store/useAccountsStore";
 
 const CATEGORIES = [
   { value: "Makanan & Minuman", label: "🍜 Makanan & Minuman" },
@@ -15,13 +17,7 @@ const CATEGORIES = [
   { value: "Lainnya", label: "📦 Lainnya" },
 ];
 
-const ACCOUNTS = [
-  { value: "Bank BCA", label: "🏦 Bank BCA" },
-  { value: "GoPay", label: "💚 GoPay" },
-  { value: "Cash", label: "💵 Cash" },
-  { value: "Bank Mandiri", label: "🏦 Bank Mandiri" },
-  { value: "OVO", label: "💜 OVO" },
-];
+// Accounts come from DB via useAccountsStore.
 
 const ICON_MAP: Record<string, string> = {
   "Makanan & Minuman": "utensils",
@@ -38,7 +34,7 @@ interface TransactionModalProps {
   open: boolean;
   onClose: () => void;
   transaction?: Transaction | null;
-  onSave: (data: Transaction) => void;
+  onSaved?: () => void;
   onDelete?: (id: string) => void;
 }
 
@@ -46,7 +42,7 @@ export function TransactionModal({
   open,
   onClose,
   transaction,
-  onSave,
+  onSaved,
   onDelete,
 }: TransactionModalProps) {
   const isEdit = !!transaction;
@@ -54,10 +50,16 @@ export function TransactionModal({
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [category, setCategory] = useState("Makanan & Minuman");
-  const [account, setAccount] = useState("Bank BCA");
+  const { accounts, fetchAccounts } = useAccountsStore();
+  const [accountId, setAccountId] = useState<string>("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
+  useEffect(() => {
+    // Ensure accounts are loaded for the select.
+    fetchAccounts();
+  }, [fetchAccounts]);
 
   useEffect(() => {
     if (transaction) {
@@ -65,45 +67,63 @@ export function TransactionModal({
       setAmount(String(Math.abs(transaction.amount)));
       setType(transaction.type);
       setCategory(transaction.category);
-      setAccount(transaction.account);
+      setAccountId(transaction.accountId);
       setDate(transaction.date);
     } else {
       setDescription("");
       setAmount("");
       setType("expense");
       setCategory("Makanan & Minuman");
-      setAccount("Bank BCA");
+      setAccountId(accounts[0]?.id || "");
       setDate(new Date().toISOString().split("T")[0]);
     }
     setShowDelete(false);
-  }, [transaction, open]);
+  }, [transaction, open, accounts]);
 
   const handleSave = async () => {
-    if (!description || !amount) return;
+    if (!description || !amount || !accountId) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const numAmount = parseFloat(amount);
-    onSave({
-      id: transaction?.id || Date.now().toString(),
-      description,
-      amount: type === "expense" ? -numAmount : numAmount,
-      type,
-      category,
-      categoryIcon: ICON_MAP[category] || "banknote",
-      account,
-      date,
-    });
-    setIsLoading(false);
-    onClose();
+    try {
+      const numAmount = parseFloat(amount);
+      const basePayload = {
+        description,
+        amount: Math.abs(numAmount),
+        type,
+        category,
+        category_icon: ICON_MAP[category] || "banknote",
+        date,
+      };
+
+      if (transaction?.id) {
+        await transactionsApi.update(transaction.id, basePayload);
+      } else {
+        await transactionsApi.create({
+          ...basePayload,
+          account_id: accountId,
+        });
+      }
+
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!transaction) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onDelete?.(transaction.id);
-    setIsLoading(false);
-    onClose();
+    try {
+      if (onDelete) {
+        await onDelete(transaction.id);
+      } else {
+        await transactionsApi.delete(transaction.id);
+      }
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (showDelete) {
@@ -169,7 +189,11 @@ export function TransactionModal({
             <ModalSelect value={category} onChange={setCategory} options={CATEGORIES} />
           </ModalField>
           <ModalField label="Akun">
-            <ModalSelect value={account} onChange={setAccount} options={ACCOUNTS} />
+            <ModalSelect
+              value={accountId}
+              onChange={setAccountId}
+              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+            />
           </ModalField>
         </div>
 

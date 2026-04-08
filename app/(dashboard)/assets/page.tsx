@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useAssetsStore } from "@/store/useAssetsStore";
 import { formatCurrency } from "@/lib/currency";
-import { mockAssets } from "@/mocks/data";
 import type { Asset } from "@/types";
 import { AssetModal } from "@/components/features/assets/AssetModal";
 import {
@@ -21,26 +21,22 @@ import { motion } from "framer-motion";
 export default function AssetsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const [assets, setAssets] = useState<Asset[]>(mockAssets);
+  const { assets, fetchAssets, deleteAsset } = useAssetsStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Asset | null>(null);
 
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
+
   const totalValue = assets.reduce((s, a) => s + a.value, 0);
 
-  const handleSave = (data: Asset) => {
-    setAssets((prev) => {
-      const idx = prev.findIndex((a) => a.id === data.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = data;
-        return next;
-      }
-      return [...prev, data];
-    });
+  const handleDelete = async (id: string) => {
+    await deleteAsset(id);
   };
 
-  const handleDelete = (id: string) => {
-    setAssets((prev) => prev.filter((a) => a.id !== id));
+  const handleSaved = async () => {
+    await fetchAssets();
   };
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
@@ -91,7 +87,7 @@ export default function AssetsPage() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(v: any) => formatCurrency(v as number, currency)}
+                    formatter={(v) => formatCurrency(Number(v ?? 0), currency)}
                     contentStyle={{
                       background: "hsl(var(--surface-container-lowest))",
                       border: "1px solid hsl(var(--outline-variant) / 0.2)",
@@ -210,7 +206,7 @@ export default function AssetsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         asset={editTarget}
-        onSave={handleSave}
+        onSaved={handleSaved}
         onDelete={handleDelete}
       />
     </AnimatedPage>

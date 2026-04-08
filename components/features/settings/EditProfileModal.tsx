@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useUpdateProfile, useUploadAvatar } from "@/lib/hooks";
 import { Camera } from "lucide-react";
 
 interface EditProfileModalProps {
@@ -15,11 +16,15 @@ interface EditProfileModalProps {
 }
 
 export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) {
-  const { user, updateUser } = useAuthStore();
+  const { user, setUser } = useAuthStore();
+  const updateProfile = useUpdateProfile();
+  const uploadAvatar = useUploadAvatar();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -28,12 +33,15 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setAvatarPreview(user.avatar || null);
+      setAvatarFile(null);
+      setError(null);
     }
   }, [open, user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
@@ -42,15 +50,32 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({
-      name,
-      email,
-      phone,
-      ...(avatarPreview && { avatar: avatarPreview }),
-    });
-    onOpenChange(false);
+    setError(null);
+
+    try {
+      const profile = await updateProfile.mutateAsync({ name, email, phone });
+
+      let avatar = profile.avatar_url || "/avatar.jpg";
+      if (avatarFile) {
+        const uploaded = await uploadAvatar.mutateAsync(avatarFile);
+        avatar = uploaded.avatar_url || avatar;
+      }
+
+      setUser({
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone || "",
+        joinDate: profile.join_date,
+        avatar,
+      });
+
+      onOpenChange(false);
+    } catch {
+      setError("Gagal menyimpan profil. Coba lagi.");
+    }
   };
 
   return (
@@ -63,6 +88,12 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-6 mt-4">
+          {error && (
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm font-medium">
+              {error}
+            </div>
+          )}
+
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
               <Avatar className="w-24 h-24 ring-4 ring-primary/10 transition-all group-hover:ring-primary/30 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
@@ -123,8 +154,17 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-            <Button type="submit">Simpan Perubahan</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={updateProfile.isPending || uploadAvatar.isPending}
+            >
+              Batal
+            </Button>
+            <Button type="submit" disabled={updateProfile.isPending || uploadAvatar.isPending}>
+              {updateProfile.isPending || uploadAvatar.isPending ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useBudgetsStore } from "@/store/useBudgetsStore";
 import { formatCurrency } from "@/lib/currency";
-import { mockBudgets } from "@/mocks/data";
 import type { Budget } from "@/types";
 import { BudgetModal } from "@/components/features/budget/BudgetModal";
 import { Plus, Pencil } from "lucide-react";
@@ -32,28 +32,29 @@ function BudgetIcon({ icon, color }: { icon: string; color: string }) {
 export default function BudgetPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const [budgets, setBudgets] = useState<Budget[]>(mockBudgets);
+  const { budgets, fetchBudgets, deleteBudget } = useBudgetsStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Budget | null>(null);
+
+  useEffect(() => {
+    // Get current period (YYYY-MM)
+    const now = new Date();
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    fetchBudgets({ period });
+  }, [fetchBudgets]);
 
   const totalBudget = budgets.reduce((s, b) => s + b.limit, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
   const totalRemaining = totalBudget - totalSpent;
 
-  const handleSave = (data: Budget) => {
-    setBudgets((prev) => {
-      const idx = prev.findIndex((b) => b.id === data.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = data;
-        return next;
-      }
-      return [...prev, data];
-    });
+  const handleDelete = async (id: string) => {
+    await deleteBudget(id);
   };
 
-  const handleDelete = (id: string) => {
-    setBudgets((prev) => prev.filter((b) => b.id !== id));
+  const handleSaved = async () => {
+    const now = new Date();
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    await fetchBudgets({ period });
   };
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
@@ -165,7 +166,7 @@ export default function BudgetPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         budget={editTarget}
-        onSave={handleSave}
+        onSaved={handleSaved}
         onDelete={handleDelete}
       />
     </AnimatedPage>

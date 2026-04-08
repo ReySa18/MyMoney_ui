@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CrudModal, ModalField, ModalInput, ModalSelect } from "@/components/common/CrudModal";
 import type { Asset } from "@/types";
+import { assetsApi } from "@/lib/api";
 
 const ASSET_TYPES = [
   { value: "Saham", label: "📈 Saham" },
@@ -37,11 +38,11 @@ interface AssetModalProps {
   open: boolean;
   onClose: () => void;
   asset?: Asset | null;
-  onSave: (data: Asset) => void;
+  onSaved?: () => void;
   onDelete?: (id: string) => void;
 }
 
-export function AssetModal({ open, onClose, asset, onSave, onDelete }: AssetModalProps) {
+export function AssetModal({ open, onClose, asset, onSaved, onDelete }: AssetModalProps) {
   const isEdit = !!asset;
   const [name, setName] = useState("");
   const [type, setType] = useState("Saham");
@@ -71,30 +72,42 @@ export function AssetModal({ open, onClose, asset, onSave, onDelete }: AssetModa
   const handleSave = async () => {
     if (!name || !value) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const today = new Date().toISOString().slice(0, 7);
-    onSave({
-      id: asset?.id || Date.now().toString(),
-      name,
-      type,
-      value: parseFloat(value),
-      allocation: parseFloat(allocation) || 0,
-      change: asset?.change || 0,
-      icon: ICON_MAP[type] || "trending-up",
-      color,
-      history: asset?.history || [{ date: today, value: parseFloat(value) }],
-    });
-    setIsLoading(false);
-    onClose();
+    try {
+      const payload = {
+        name,
+        type,
+        value: parseFloat(value),
+        icon: ICON_MAP[type] || "trending-up",
+        color,
+      };
+
+      if (asset?.id) {
+        await assetsApi.update(asset.id, payload);
+      } else {
+        await assetsApi.create(payload);
+      }
+
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!asset) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    onDelete?.(asset.id);
-    setIsLoading(false);
-    onClose();
+    try {
+      if (onDelete) {
+        await onDelete(asset.id);
+      } else {
+        await assetsApi.delete(asset.id);
+      }
+      await onSaved?.();
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (showDelete) {

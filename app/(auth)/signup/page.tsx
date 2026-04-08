@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Landmark, Mail, Lock, Eye, EyeOff, User, ShieldCheck } from "lucide-react";
+import { Landmark, Mail, Lock, Eye, EyeOff, User, ShieldCheck, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore, mockUser } from "@/store/useAuthStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useRegister } from "@/lib/hooks";
+import { isApiError } from "@/lib/api";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -15,17 +16,36 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const login = useAuthStore((s) => s.login);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { t } = useTranslation();
+  const registerMutation = useRegister();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    login({ ...mockUser, name, email });
-    router.push("/dashboard");
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (!agreed) {
+      setError("Please agree to the terms and conditions");
+      return;
+    }
+
+    try {
+      await registerMutation.mutateAsync({ name, email, password });
+      // User will be set by AuthProvider after token is stored
+      router.push("/dashboard");
+    } catch (err) {
+      if (isApiError(err)) {
+        setError(err.response?.data?.message || "Registration failed. Please try again.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    }
   };
 
   return (
@@ -113,6 +133,18 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Error message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-xl bg-error/10 border border-error/20 flex items-start gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-error mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-error">{error}</p>
+              </motion.div>
+            )}
+
             {/* Name */}
             <div className="space-y-2">
               <label className="text-label-sm text-on-surface-variant">{t("auth.fullName")}</label>
@@ -123,6 +155,7 @@ export default function SignupPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Andi Pratama"
+                  required
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
               </div>
@@ -138,6 +171,7 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="andi@email.com"
+                  required
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
               </div>
@@ -153,6 +187,8 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
+                  minLength={8}
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-on-surface-variant hover:text-on-surface transition-colors">
@@ -171,6 +207,8 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
+                  minLength={8}
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
               </div>
@@ -191,11 +229,11 @@ export default function SignupPage() {
 
             <motion.button
               type="submit"
-              disabled={isLoading || !agreed}
+              disabled={registerMutation.isPending || !agreed}
               whileTap={{ scale: 0.97 }}
               className="w-full py-3.5 btn-gradient text-center disabled:opacity-60"
             >
-              {isLoading ? (
+              {registerMutation.isPending ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}

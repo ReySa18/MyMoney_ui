@@ -4,9 +4,7 @@ import { motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { ReactNode } from "react";

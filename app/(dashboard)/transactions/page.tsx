@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useTransactionsStore } from "@/store/useTransactionsStore";
 import { formatCurrency } from "@/lib/currency";
-import { mockTransactions } from "@/mocks/data";
 import type { Transaction } from "@/types";
 import { TransactionModal } from "@/components/features/transactions/TransactionModal";
-import { Search, Plus, Filter, ArrowUpRight, ArrowDownLeft, Pencil } from "lucide-react";
+import { Search, Plus, ArrowUpRight, ArrowDownLeft, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -28,51 +28,35 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function TransactionsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const { transactions, total, page, totalPages, fetchTransactions, deleteTransaction, loading, setPage } = useTransactionsStore();
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const itemsPerPage = 8;
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, search, startDate, endDate]);
-
-  const filtered = transactions.filter((tx) => {
-    const matchFilter =
-      filter === "all" ||
-      (filter === "income" && tx.type === "income") ||
-      (filter === "expense" && tx.type === "expense");
-    const matchSearch = tx.description.toLowerCase().includes(search.toLowerCase());
-    
-    let matchDate = true;
-    if (startDate) matchDate = matchDate && tx.date >= startDate;
-    if (endDate) matchDate = matchDate && tx.date <= endDate;
-    
-    return matchFilter && matchSearch && matchDate;
-  });
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const handleSave = (data: Transaction) => {
-    setTransactions((prev) => {
-      const idx = prev.findIndex((t) => t.id === data.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = data;
-        return next;
-      }
-      return [data, ...prev];
+    fetchTransactions({
+      type: filter,
+      search: search || undefined,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
     });
+  }, [filter, search, startDate, endDate, page, fetchTransactions]);
+
+  const handleDelete = async (id: string) => {
+    await deleteTransaction(id);
   };
 
-  const handleDelete = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  const handleSaved = async () => {
+    // Refresh list after create/update
+    await fetchTransactions({
+      type: filter,
+      search: search || undefined,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
+    });
   };
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
@@ -88,7 +72,7 @@ export default function TransactionsPage() {
               <h1 className="font-heading text-2xl sm:text-headline-md text-on-surface">
                 {t("transactions.title")}
               </h1>
-              <p className="text-sm text-on-surface-variant mt-1">{transactions.length} transaksi tercatat</p>
+              <p className="text-sm text-on-surface-variant mt-1">{total} transaksi tercatat</p>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
@@ -173,14 +157,18 @@ export default function TransactionsPage() {
             <span className="text-label-sm text-on-surface-variant text-right pr-8">{t("transactions.amount")}</span>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="py-16 text-center">
+              <p className="text-on-surface-variant">Loading...</p>
+            </div>
+          ) : transactions.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-on-surface-variant">{t("transactions.noTransactions")}</p>
             </div>
           ) : (
             <>
               <div className="divide-y divide-outline-variant/10">
-                {paginated.map((tx) => (
+                {transactions.map((tx) => (
                   <motion.div
                     key={tx.id}
                     whileHover={{ backgroundColor: "hsl(var(--surface-container-low)/0.5)" }}
@@ -251,19 +239,19 @@ export default function TransactionsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-outline-variant/10">
                 <span className="text-sm text-on-surface-variant">
-                  Menampilkan {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} dari {filtered.length} transaksi
+                  Halaman {page} dari {totalPages} ({total} transaksi)
                 </span>
                 <div className="flex items-center gap-2">
                   <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
                   >
                     Sebelumnya
                   </button>
                   <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
                   >
                     Berikutnya
@@ -280,7 +268,7 @@ export default function TransactionsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         transaction={editTarget}
-        onSave={handleSave}
+        onSaved={handleSaved}
         onDelete={handleDelete}
       />
     </AnimatedPage>

@@ -1,29 +1,38 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Landmark, Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Landmark, Mail, Lock, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore, mockUser } from "@/store/useAuthStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useLogin } from "@/lib/hooks";
+import { isApiError } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const login = useAuthStore((s) => s.login);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { t } = useTranslation();
+  const loginMutation = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1000));
-    login(mockUser);
-    router.push("/dashboard");
+    setError(null);
+    
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      // User will be set by AuthProvider after token is stored
+      router.push("/dashboard");
+    } catch (err) {
+      if (isApiError(err)) {
+        setError(err.response?.data?.message || "Login failed. Please try again.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    }
   };
 
   return (
@@ -116,6 +125,18 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-xl bg-error/10 border border-error/20 flex items-start gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-error mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-error">{error}</p>
+              </motion.div>
+            )}
+
             {/* Email */}
             <div className="space-y-2">
               <label className="text-label-sm text-on-surface-variant">
@@ -128,6 +149,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="andi@email.com"
+                  required
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
               </div>
@@ -153,6 +175,8 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
+                  minLength={8}
                   className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
                 />
                 <button
@@ -172,11 +196,11 @@ export default function LoginPage() {
             {/* Submit */}
             <motion.button
               type="submit"
-              disabled={isLoading}
+              disabled={loginMutation.isPending}
               whileTap={{ scale: 0.97 }}
               className="w-full py-3.5 btn-gradient text-center disabled:opacity-60"
             >
-              {isLoading ? (
+              {loginMutation.isPending ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}

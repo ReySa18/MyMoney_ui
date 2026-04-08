@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useAccountsStore } from "@/store/useAccountsStore";
 import { formatCurrency } from "@/lib/currency";
-import { mockAccounts } from "@/mocks/data";
 import type { Account } from "@/types";
 import { AccountModal } from "@/components/features/accounts/AccountModal";
 import { Plus, Landmark, Wallet, Banknote, TrendingUp, CreditCard, Pencil } from "lucide-react";
@@ -30,26 +30,22 @@ const TYPE_LABELS: Record<string, string> = {
 export default function AccountsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const { accounts, fetchAccounts, deleteAccount, loading } = useAccountsStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Account | null>(null);
 
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
-  const handleSave = (data: Account) => {
-    setAccounts((prev) => {
-      const idx = prev.findIndex((a) => a.id === data.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = data;
-        return next;
-      }
-      return [...prev, data];
-    });
+  const handleDelete = async (id: string) => {
+    await deleteAccount(id);
   };
 
-  const handleDelete = (id: string) => {
-    setAccounts((prev) => prev.filter((a) => a.id !== id));
+  const handleSaved = async () => {
+    await fetchAccounts();
   };
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
@@ -85,9 +81,15 @@ export default function AccountsPage() {
 
         {/* Account cards grid */}
         <StaggerItem className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {accounts.map((account) => {
-            const Icon = ACCOUNT_ICONS[account.icon] || Landmark;
-            return (
+          {loading ? (
+            <div className="col-span-full text-center py-8 text-on-surface-variant">
+              Loading...
+            </div>
+          ) : (
+            <>
+              {accounts.map((account) => {
+                const Icon = ACCOUNT_ICONS[account.icon] || Landmark;
+                return (
               <motion.div
                 key={account.id}
                 whileHover={{ scale: 1.02, y: -2 }}
@@ -130,21 +132,23 @@ export default function AccountsPage() {
                   </div>
                 </div>
               </motion.div>
-            );
-          })}
+              );
+            })}
 
-          {/* Add account placeholder */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={openAdd}
-            className="card-tonal cursor-pointer border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center gap-3 py-10 text-on-surface-variant hover:text-primary hover:border-primary/30 transition-colors min-h-[180px]"
-          >
-            <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center">
-              <Plus className="w-6 h-6" />
-            </div>
-            <span className="text-sm font-medium">{t("accounts.addAccount")}</span>
-          </motion.div>
+            {/* Add account placeholder */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={openAdd}
+              className="card-tonal cursor-pointer border-2 border-dashed border-outline-variant/30 flex flex-col items-center justify-center gap-3 py-10 text-on-surface-variant hover:text-primary hover:border-primary/30 transition-colors min-h-[180px]"
+            >
+              <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center">
+                <Plus className="w-6 h-6" />
+              </div>
+              <span className="text-sm font-medium">{t("accounts.addAccount")}</span>
+            </motion.div>
+          </>
+          )}
         </StaggerItem>
       </StaggerContainer>
 
@@ -152,7 +156,7 @@ export default function AccountsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         account={editTarget}
-        onSave={handleSave}
+        onSaved={handleSaved}
         onDelete={handleDelete}
       />
     </AnimatedPage>
