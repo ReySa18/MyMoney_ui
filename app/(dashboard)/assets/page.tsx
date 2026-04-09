@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useAssetsStore } from "@/store/useAssetsStore";
+import { useAssets, useDeleteAsset } from "@/lib/hooks/useAssets";
 import { formatCurrency } from "@/lib/currency";
 import type { Asset } from "@/types";
 import { AssetModal } from "@/components/features/assets/AssetModal";
@@ -21,13 +21,10 @@ import { motion } from "framer-motion";
 export default function AssetsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const { assets, fetchAssets, deleteAsset } = useAssetsStore();
+  const { data: assets = [] } = useAssets();
+  const { mutateAsync: deleteAsset } = useDeleteAsset();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Asset | null>(null);
-
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
 
   const totalValue = assets.reduce((s, a) => s + a.value, 0);
 
@@ -35,9 +32,8 @@ export default function AssetsPage() {
     await deleteAsset(id);
   };
 
-  const handleSaved = async () => {
-    await fetchAssets();
-  };
+  // Invalidasi otomatis via React Query mutation — tidak perlu manual fetch
+  const handleSaved = () => {};
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
   const openEdit = (a: Asset) => { setEditTarget(a); setModalOpen(true); };

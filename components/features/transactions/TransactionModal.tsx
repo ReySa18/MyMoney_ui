@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { CrudModal, ModalField, ModalInput, ModalSelect } from "@/components/common/CrudModal";
 import type { Transaction } from "@/types";
 import { transactionsApi } from "@/lib/api";
-import { useAccountsStore } from "@/store/useAccountsStore";
+import { useAccounts } from "@/lib/hooks/useAccounts";
 
 const CATEGORIES = [
   { value: "Makanan & Minuman", label: "🍜 Makanan & Minuman" },
@@ -50,16 +50,12 @@ export function TransactionModal({
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [category, setCategory] = useState("Makanan & Minuman");
-  const { accounts, fetchAccounts } = useAccountsStore();
+  // Accounts dari React Query cache — sudah di-prefetch saat login, tidak perlu useEffect manual
+  const { data: accounts = [] } = useAccounts();
   const [accountId, setAccountId] = useState<string>("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-
-  useEffect(() => {
-    // Ensure accounts are loaded for the select.
-    fetchAccounts();
-  }, [fetchAccounts]);
 
   useEffect(() => {
     if (transaction) {

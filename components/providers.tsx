@@ -12,8 +12,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            staleTime: 10 * 60 * 1000,   // 10 menit — data dianggap fresh selama 10 menit
+            gcTime: 30 * 60 * 1000,      // 30 menit di memory setelah komponen unmount
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
             retry: 1,
           },
         },

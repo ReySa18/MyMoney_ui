@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useTransactionsStore } from "@/store/useTransactionsStore";
+import { useTransactions } from "@/lib/hooks/useTransactions";
 import { formatCurrency } from "@/lib/currency";
 import {
   Utensils, Car, Banknote, ShoppingBag, Home, Tv, Coffee, Wifi, TrendingUp,
@@ -27,15 +26,14 @@ const iconMap: Record<string, React.ElementType> = {
 export function RecentTransactions({ transactions: propTransactions }: { transactions?: Transaction[] }) {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const { transactions: storeTransactions, fetchTransactions, loading } = useTransactionsStore();
 
-  useEffect(() => {
-    if (!propTransactions) {
-      fetchTransactions({ limit: 5 });
-    }
-  }, [propTransactions, fetchTransactions]);
+  // Pakai prop jika diberikan, jika tidak ambil dari React Query cache (limit 5)
+  const { data, isLoading: loading } = useTransactions(
+    { limit: 5 },
+    { enabled: !propTransactions }
+  );
 
-  const displayTransactions = (propTransactions || storeTransactions).slice(0, 5);
+  const displayTransactions = (propTransactions ?? data?.data ?? []).slice(0, 5);
 
   const getRelativeDate = (dateStr: string) => {
     const now = new Date("2024-06-15");

@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
 import { TrendingUp, ArrowDown, ArrowUp } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, formatPercentage } from "@/lib/currency";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useDashboardStore } from "@/store/useDashboardStore";
+import { useDashboardSummary } from "@/lib/hooks/useDashboard";
 import { motion } from "framer-motion";
 
 export function BalanceCard() {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const { summary, fetchSummary, loading } = useDashboardStore();
-
-  useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
+  const { data: summary, isLoading: loading } = useDashboardSummary();
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

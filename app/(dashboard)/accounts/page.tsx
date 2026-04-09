@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useAccountsStore } from "@/store/useAccountsStore";
+import { useAccounts, useDeleteAccount } from "@/lib/hooks/useAccounts";
 import { formatCurrency } from "@/lib/currency";
 import type { Account } from "@/types";
 import { AccountModal } from "@/components/features/accounts/AccountModal";
@@ -30,13 +30,10 @@ const TYPE_LABELS: Record<string, string> = {
 export default function AccountsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const { accounts, fetchAccounts, deleteAccount, loading } = useAccountsStore();
+  const { data: accounts = [], isLoading: loading } = useAccounts();
+  const { mutateAsync: deleteAccount } = useDeleteAccount();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Account | null>(null);
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
@@ -44,9 +41,8 @@ export default function AccountsPage() {
     await deleteAccount(id);
   };
 
-  const handleSaved = async () => {
-    await fetchAccounts();
-  };
+  // Invalidasi otomatis via React Query mutation — tidak perlu manual fetch
+  const handleSaved = () => {};
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
   const openEdit = (a: Account) => { setEditTarget(a); setModalOpen(true); };

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useAccountsStore } from "@/store/useAccountsStore";
+import { useAccounts } from "@/lib/hooks/useAccounts";
 import { formatCurrency } from "@/lib/currency";
 import { Landmark, Wallet, Banknote, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
@@ -18,11 +17,7 @@ const iconMap: Record<string, React.ElementType> = {
 export function AccountList() {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const { accounts, fetchAccounts, loading } = useAccountsStore();
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+  const { data: accounts = [], isLoading: loading } = useAccounts();
 
   const displayAccounts = accounts.slice(0, 3);
 

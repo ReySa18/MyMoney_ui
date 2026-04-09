@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useDashboardStore } from "@/store/useDashboardStore";
+import { useCashflow } from "@/lib/hooks/useDashboard";
 import { formatCurrency } from "@/lib/currency";
 import {
   BarChart,
@@ -18,11 +17,7 @@ import {
 export function CashFlowChart() {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const { cashflow, fetchCashflow, loading } = useDashboardStore();
-
-  useEffect(() => {
-    fetchCashflow();
-  }, [fetchCashflow]);
+  const { data: cashflow = [], isLoading: loading } = useCashflow();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const CustomTooltip = ({ active, payload, label }: any) => {

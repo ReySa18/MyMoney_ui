@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useBudgetsStore } from "@/store/useBudgetsStore";
+import { useBudgets, useDeleteBudget } from "@/lib/hooks/useBudgets";
 import { formatCurrency } from "@/lib/currency";
 import type { Budget } from "@/types";
 import { BudgetModal } from "@/components/features/budget/BudgetModal";
@@ -32,16 +32,15 @@ function BudgetIcon({ icon, color }: { icon: string; color: string }) {
 export default function BudgetPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const { budgets, fetchBudgets, deleteBudget } = useBudgetsStore();
+
+  // Period bulan berjalan (YYYY-MM) — dihitung sekali saat render
+  const now = new Date();
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const { data: budgets = [] } = useBudgets({ period });
+  const { mutateAsync: deleteBudget } = useDeleteBudget();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Budget | null>(null);
-
-  useEffect(() => {
-    // Get current period (YYYY-MM)
-    const now = new Date();
-    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    fetchBudgets({ period });
-  }, [fetchBudgets]);
 
   const totalBudget = budgets.reduce((s, b) => s + b.limit, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
@@ -51,11 +50,8 @@ export default function BudgetPage() {
     await deleteBudget(id);
   };
 
-  const handleSaved = async () => {
-    const now = new Date();
-    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    await fetchBudgets({ period });
-  };
+  // Invalidasi otomatis via React Query mutation — tidak perlu manual fetch
+  const handleSaved = () => {};
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
   const openEdit = (b: Budget) => { setEditTarget(b); setModalOpen(true); };

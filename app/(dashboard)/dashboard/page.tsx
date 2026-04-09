@@ -9,7 +9,7 @@ import { ExpenseAllocation } from "@/components/features/dashboard/ExpenseAlloca
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { TransactionModal } from "@/components/features/transactions/TransactionModal";
-import { useTransactionsStore } from "@/store/useTransactionsStore";
+import { usePrefetchWarmup } from "@/lib/hooks/usePrefetchWarmup";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,12 +17,13 @@ import { motion } from "framer-motion";
 export default function DashboardPage() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const fetchTransactions = useTransactionsStore((s) => s.fetchTransactions);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleSaved = async () => {
-    await fetchTransactions({ limit: 5 });
-  };
+  // Prefetch background halaman lain saat browser idle
+  usePrefetchWarmup();
+
+  // Tidak perlu manual fetch — React Query invalidate otomatis via mutation hooks
+  const handleSaved = () => {};
 
   return (
     <AnimatedPage>

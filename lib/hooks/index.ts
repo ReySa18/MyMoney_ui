@@ -21,3 +21,7 @@ export * from './useDashboard';
 
 // Report hooks
 export * from './useReports';
+
+// Utility hooks
+export * from './useDebounce';
+export * from './usePrefetchWarmup';

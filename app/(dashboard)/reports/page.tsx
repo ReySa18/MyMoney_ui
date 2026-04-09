@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useReportsStore } from "@/store/useReportsStore";
+import { useMonthlyReport } from "@/lib/hooks/useReports";
 import { formatCurrency } from "@/lib/currency";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { Download } from "lucide-react";
@@ -13,12 +12,8 @@ import { motion } from "framer-motion";
 export default function ReportsPage() {
   const { t } = useTranslation();
   const currency = usePreferencesStore((s) => s.currency);
-  const { monthlyReports, fetchMonthlyReports, loading } = useReportsStore();
-
-  useEffect(() => {
-    const currentYear = new Date().getFullYear();
-    fetchMonthlyReports(currentYear);
-  }, [fetchMonthlyReports]);
+  const currentYear = new Date().getFullYear();
+  const { data: monthlyReports = [], isLoading: loading } = useMonthlyReport(currentYear);
 
   const totalIncome = monthlyReports.reduce((sum, d) => sum + d.income, 0);
   const totalExpense = monthlyReports.reduce((sum, d) => sum + d.expense, 0);

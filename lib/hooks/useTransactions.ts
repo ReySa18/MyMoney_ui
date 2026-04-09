@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { transactionsApi } from '@/lib/api';
 import type { CreateTransactionDto, UpdateTransactionDto, QueryTransactionParams } from '@/lib/api';
 
@@ -10,10 +10,14 @@ export const transactionKeys = {
 };
 
 // Queries
-export const useTransactions = (params?: QueryTransactionParams) => {
+export const useTransactions = (
+  params?: QueryTransactionParams,
+  options?: { placeholderData?: typeof keepPreviousData; enabled?: boolean }
+) => {
   return useQuery({
     queryKey: transactionKeys.list(params),
     queryFn: () => transactionsApi.getAll(params),
+    ...options,
   });
 };
 

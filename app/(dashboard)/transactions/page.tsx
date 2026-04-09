@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatedPage, StaggerContainer, StaggerItem } from "@/components/common/AnimatedPage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { useTransactionsStore } from "@/store/useTransactionsStore";
+import { useTransactions, useDeleteTransaction } from "@/lib/hooks/useTransactions";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 import { formatCurrency } from "@/lib/currency";
 import type { Transaction } from "@/types";
 import { TransactionModal } from "@/components/features/transactions/TransactionModal";
 import { Search, Plus, ArrowUpRight, ArrowDownLeft, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { keepPreviousData } from "@tanstack/react-query";
 
 const CATEGORY_ICONS: Record<string, string> = {
   utensils: "🍜",
@@ -28,39 +30,72 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function TransactionsPage() {
   const { t } = useTranslation();
   const { currency } = usePreferencesStore();
-  const { transactions, total, page, totalPages, fetchTransactions, deleteTransaction, loading, setPage } = useTransactionsStore();
+
+  // UI state — tetap di useState (bukan server-state)
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [search, setSearch] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
 
-  useEffect(() => {
-    fetchTransactions({
-      type: filter,
-      search: search || undefined,
+  // Debounce search 400ms — tidak request tiap keystroke
+  const debouncedSearch = useDebounce(search, 400);
+
+  // Server-state via React Query — keepPreviousData agar list tidak flicker saat ganti page
+  const { data, isLoading, isFetching } = useTransactions(
+    {
+      type: filter !== "all" ? filter : undefined,
+      search: debouncedSearch || undefined,
       start_date: startDate || undefined,
       end_date: endDate || undefined,
-    });
-  }, [filter, search, startDate, endDate, page, fetchTransactions]);
+      page,
+      limit: 8,
+    },
+    { placeholderData: keepPreviousData }
+  );
+
+  const transactions = data?.data ?? [];
+  const total = data?.meta.total ?? 0;
+  const totalPages = data?.meta.totalPages ?? 0;
+
+  // Mutations — invalidasi otomatis via hook
+  const { mutateAsync: deleteTransaction } = useDeleteTransaction();
 
   const handleDelete = async (id: string) => {
     await deleteTransaction(id);
   };
 
-  const handleSaved = async () => {
-    // Refresh list after create/update
-    await fetchTransactions({
-      type: filter,
-      search: search || undefined,
-      start_date: startDate || undefined,
-      end_date: endDate || undefined,
-    });
+  // Saat filter/search berubah, reset ke page 1
+  const handleFilterChange = (f: "all" | "income" | "expense") => {
+    setFilter(f);
+    setPage(1);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+
+  const handleDateChange = (field: "start" | "end", val: string) => {
+    if (field === "start") setStartDate(val);
+    else setEndDate(val);
+    setPage(1);
+  };
+
+  const handleReset = () => {
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
   };
 
   const openAdd = () => { setEditTarget(null); setModalOpen(true); };
   const openEdit = (tx: Transaction) => { setEditTarget(tx); setModalOpen(true); };
+
+  // isFetching tapi ada data lama → tampilkan list lama dengan overlay subtle
+  const loading = isLoading;
+  const isRefetching = !isLoading && isFetching;
 
   return (
     <AnimatedPage>
@@ -72,7 +107,9 @@ export default function TransactionsPage() {
               <h1 className="font-heading text-2xl sm:text-headline-md text-on-surface">
                 {t("transactions.title")}
               </h1>
-              <p className="text-sm text-on-surface-variant mt-1">{total} transaksi tercatat</p>
+              <p className="text-sm text-on-surface-variant mt-1">
+                {total} transaksi tercatat
+              </p>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
@@ -93,17 +130,17 @@ export default function TransactionsPage() {
               <Search className="w-4 h-4 text-on-surface-variant shrink-0" strokeWidth={1.5} />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder={t("transactions.search")}
                 className="bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none w-full"
               />
             </div>
-            
+
             <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
               {(["all", "income", "expense"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFilter(f)}
+                  onClick={() => handleFilterChange(f)}
                   className={cn(
                     "px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap border",
                     filter === f
@@ -116,14 +153,14 @@ export default function TransactionsPage() {
               ))}
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/10">
               <span className="text-sm font-medium text-on-surface-variant">Mulai:</span>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => handleDateChange("start", e.target.value)}
                 className="bg-transparent text-sm font-medium text-on-surface outline-none cursor-pointer min-w-[120px]"
               />
             </div>
@@ -132,13 +169,13 @@ export default function TransactionsPage() {
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => handleDateChange("end", e.target.value)}
                 className="bg-transparent text-sm font-medium text-on-surface outline-none cursor-pointer min-w-[120px]"
               />
             </div>
             {(startDate || endDate) && (
-              <button 
-                onClick={() => { setStartDate(""); setEndDate(""); }}
+              <button
+                onClick={handleReset}
                 className="text-sm text-tertiary hover:underline font-medium px-2"
               >
                 Reset
@@ -148,7 +185,7 @@ export default function TransactionsPage() {
         </StaggerItem>
 
         {/* Transaction list */}
-        <StaggerItem className="card-tonal !p-0 overflow-hidden">
+        <StaggerItem className={cn("card-tonal !p-0 overflow-hidden transition-opacity", isRefetching && "opacity-70")}>
           {/* Table header — desktop only */}
           <div className="hidden sm:grid grid-cols-[3fr_1.5fr_1fr_1fr] gap-4 px-6 py-3 bg-surface-container border-b border-outline-variant/10">
             <span className="text-label-sm text-on-surface-variant">{t("transactions.description")}</span>
@@ -187,7 +224,6 @@ export default function TransactionsPage() {
                       <p className="text-sm font-medium text-on-surface truncate">{tx.description}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-on-surface-variant">{tx.account}</span>
-                        {/* Meta items stringed together for mobile view */}
                         <span className="text-xs text-on-surface-variant/40 sm:hidden">·</span>
                         <span className="text-xs text-on-surface-variant sm:hidden">{tx.date}</span>
                         <span className="text-xs text-on-surface-variant sm:hidden">· {tx.category}</span>
@@ -226,40 +262,39 @@ export default function TransactionsPage() {
                         {formatCurrency(Math.abs(tx.amount), currency)}
                       </span>
                     </div>
-                    {/* The pencil icon will stay at the very end consistently */}
                     <div className="w-4 h-4 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <Pencil className="w-3.5 h-3.5 text-on-surface-variant/60 hover:text-on-surface-variant" />
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-outline-variant/10">
-                <span className="text-sm text-on-surface-variant">
-                  Halaman {page} dari {totalPages} ({total} transaksi)
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
-                  >
-                    Sebelumnya
-                  </button>
-                  <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage(page + 1)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
-                  >
-                    Berikutnya
-                  </button>
-                </div>
+                ))}
               </div>
-            )}
-          </>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-outline-variant/10">
+                  <span className="text-sm text-on-surface-variant">
+                    Halaman {page} dari {totalPages} ({total} transaksi)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      disabled={page === totalPages}
+                      onClick={() => setPage(page + 1)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-container hover:bg-surface-container-high disabled:opacity-50 transition-colors"
+                    >
+                      Berikutnya
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </StaggerItem>
       </StaggerContainer>
@@ -268,7 +303,7 @@ export default function TransactionsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         transaction={editTarget}
-        onSaved={handleSaved}
+        onSaved={() => {}}
         onDelete={handleDelete}
       />
     </AnimatedPage>

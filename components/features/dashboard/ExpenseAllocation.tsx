@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useDashboardStore } from "@/store/useDashboardStore";
+import { useExpenseCategories } from "@/lib/hooks/useDashboard";
 import { motion } from "framer-motion";
 
 export function ExpenseAllocation() {
   const { t } = useTranslation();
-  const { expenseCategories, fetchExpenseCategories, loading } = useDashboardStore();
-
-  useEffect(() => {
-    fetchExpenseCategories();
-  }, [fetchExpenseCategories]);
+  const { data: expenseCategories = [], isLoading: loading } = useExpenseCategories();
 
   const totalUsed = expenseCategories.reduce((sum, cat) => sum + cat.percentage, 0);
 
